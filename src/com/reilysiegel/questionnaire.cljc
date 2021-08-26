@@ -9,36 +9,32 @@
 
 (defn answer [{::keys [queue question results]
                :as    questionnaire}
-              option-id]
+              {::option/keys [questions]
+               :as           option}]
   ;; Do nothing if option is not is question
-  (if-not (question/contains? question option-id)
+  (if-not ((set (::question/options question)) option)
     questionnaire
-    (let [option (first (filter (comp #{option-id} ::option/id)
-                                (::question/options question)))
-          queue  (into queue (::option/questions option))]
-      (assoc questionnaire
-             ::queue (rest queue)
-             ::question (first queue)
-             ::results  (conj results
-                              ;; This keeps the data from both the question and
-                              ;; option chosen in results, it is only necessary
-                              ;; to keep the option chosen.
-                              (merge (dissoc option ::option/questions)
-                                     (dissoc question
-                                             ::question/options)))))))
+    (let [queue* (into queue questions)]
+      {::queue    (rest queue*)
+       ::question (first queue*)
+       ::results  (conj results option)})))
 
 (comment
+  (def color-options [{::option/id :red}])
   (def color {::question/id      :color
-              ::question/options [{::option/id :red}]})
+              ::question/options color-options})
+  (def square-options [{::option/id true}
+                       {::option/id false}])
   (def square {:question/id       :square
-               ::question/options [{::option/id true}
-                                   {::option/id false}]})
+               ::question/options square-options})
+  (def shape-options [{::option/id :round}
+                      {::option/id        :rectangle
+                       ::option/questions [square]}])
   (def shape {:question/id       :shape
-              ::question/options [{::option/id :round}
-                                  {::option/id        :rectangle
-                                   ::option/questions [square]}]})
+              ::question/options shape-options})
   (def testionnaire (questionnaire color shape))
   (::question/options (::question testionnaire))
+  (= testionnaire (answer testionnaire {:test :test}))
   (-> testionnaire
-      (answer :red)
-      (answer :round)))
+      (answer (first color-options))
+      (answer (second shape-options))))
