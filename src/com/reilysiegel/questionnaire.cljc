@@ -7,20 +7,24 @@
    ::question question
    ::results  []})
 
-(defn answer [questionnaire option-id]
-
-  (if-not (question/contains? (::question questionnaire) option-id)
+(defn answer [{::keys [queue question results]
+               :as    questionnaire}
+              option-id]
+  ;; Do nothing if option is not is question
+  (if-not (question/contains? question option-id)
     questionnaire
     (let [option (first (filter (comp #{option-id} ::option/id)
-                                (-> questionnaire ::question question/options)))
-          queue  (into (::queue questionnaire) (::option/questions option))]
-      questionnaire
+                                (::question/options question)))
+          queue  (into queue (::option/questions option))]
       (assoc questionnaire
              ::queue (rest queue)
              ::question (first queue)
-             ::results  (conj (::results questionnaire)
+             ::results  (conj results
+                              ;; This keeps the data from both the question and
+                              ;; option chosen in results, it is only necessary
+                              ;; to keep the option chosen.
                               (merge (dissoc option ::option/questions)
-                                     (dissoc (::question questionnaire)
+                                     (dissoc question
                                              ::question/options)))))))
 
 (comment
@@ -34,6 +38,7 @@
                                   {::option/id        :rectangle
                                    ::option/questions [square]}]})
   (def testionnaire (questionnaire color shape))
-  (question/options (::question testionnaire))
+  (::question/options (::question testionnaire))
   (-> testionnaire
-      (answer :red)))
+      (answer :red)
+      (answer :round)))
